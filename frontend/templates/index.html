@@ -1,169 +1,801 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <title>Painel SmartGarden</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem; background: #f4f6f5; color: #1d2b1f; }
-    h1 { margin-bottom: 0.25rem; }
-    .subtitle { color: #5a6b5d; margin-top: 0; }
-    .legend { display: flex; flex-wrap: wrap; gap: 1.25rem; color: #5a6b5d; font-size: 0.85rem; margin: 0.5rem 0 1.5rem; }
-    .legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
-    .dot { width: 0.65rem; height: 0.65rem; border-radius: 50%; display: inline-block; }
-    .dot-green  { background: #2e7d32; }
-    .dot-red    { background: #b3261e; }
-    .dot-yellow { background: #b08900; }
-    .cards { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
-    .card { background: white; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.15); min-width: 180px; }
-    .card h2 { margin: 0 0 0.5rem; font-size: 0.9rem; color: #5a6b5d; text-transform: uppercase; }
-    .card .value { font-size: 1.8rem; font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-bottom: 2rem; }
-    th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #e3e7e3; font-size: 0.9rem; }
-    th { background: #e9efe9; }
-    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; margin-right: 0.25rem; }
-    .badge-green  { background: #2e7d32; }
-    .badge-red    { background: #b3261e; }
-    .badge-yellow { background: #b08900; }
-    h3 { margin-top: 0; }
-    #config-table input { width: 6rem; padding: 0.2rem 0.4rem; }
-    .btn-salvar { background: #2e7d32; color: white; border: none; border-radius: 4px; padding: 0.35rem 0.75rem; cursor: pointer; font-size: 0.85rem; }
-    .btn-salvar:hover { background: #265f29; }
-    .config-status { font-size: 0.8rem; margin-left: 0.5rem; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartGarden — Painel de controle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-0: #10140f;
+    --bg-1: #181f16;
+    --bg-2: #212a1d;
+    --bg-3: #283323;
+    --border: #34402c;
+    --border-soft: #283323;
+    --text-0: #ecefe6;
+    --text-1: #93a188;
+    --text-2: #6b7662;
+    --green: #5fd17a;
+    --green-dim: #2c3a2a;
+    --red: #e5604f;
+    --red-dim: #3a2924;
+    --amber: #e3a23d;
+    --amber-dim: #3a3122;
+    --data: #5fb4c7;
+    --radius: 10px;
+    --font-display: "Big Shoulders", sans-serif;
+    --font-body: "IBM Plex Sans", sans-serif;
+    --font-mono: "IBM Plex Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg-0);
+    background-image:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(95, 209, 122, 0.06), transparent),
+      radial-gradient(ellipse 700px 500px at 100% 0%, rgba(95, 180, 199, 0.05), transparent);
+    color: var(--text-0);
+    font-family: var(--font-body);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a, button, input, select { font-family: inherit; }
+
+  :focus-visible {
+    outline: 2px solid var(--data);
+    outline-offset: 2px;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* ---------- header ---------- */
+  header.top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.75rem;
+    border-bottom: 1px solid var(--border-soft);
+    flex-wrap: wrap;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    margin: 0 0 0.35rem;
+  }
+  h1.title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2.6rem;
+    letter-spacing: 0.01em;
+    line-height: 0.95;
+    margin: 0;
+    color: var(--text-0);
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-1);
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem 0.4rem 0.7rem;
+  }
+  .status-pill .pulse-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 0 rgba(95, 209, 122, 0.5);
+    animation: pulse 2.2s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(95, 209, 122, 0.45); }
+    70%  { box-shadow: 0 0 0 6px rgba(95, 209, 122, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(95, 209, 122, 0); }
+  }
+
+  /* ---------- sector panels (signature) ---------- */
+  .panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .panel {
+    background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--green), var(--data), var(--amber), var(--red));
+    opacity: 0.5;
+  }
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.65rem;
+  }
+  .panel-head .sector-num {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2.1rem;
+    color: var(--text-0);
+  }
+  .panel-head .sector-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .leds { display: flex; gap: 0.5rem; }
+  .led {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    background: var(--bg-3);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3);
+    transition: background 0.25s, box-shadow 0.25s;
+  }
+  .led.on.green  { background: var(--green); box-shadow: 0 0 7px 2px rgba(95, 209, 122, 0.8), inset 0 0 2px rgba(255,255,255,0.4); }
+  .led.on.red    { background: var(--red);   box-shadow: 0 0 7px 2px rgba(229, 96, 79, 0.8), inset 0 0 2px rgba(255,255,255,0.4); }
+  .led.on.amber  { background: var(--amber); box-shadow: 0 0 7px 2px rgba(227, 162, 61, 0.8), inset 0 0 2px rgba(255,255,255,0.4); }
+
+  .panel-readout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-1);
+    margin-bottom: 0.85rem;
+  }
+  .panel-readout b { color: var(--text-0); font-weight: 600; }
+
+  .panel-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border-soft);
+    padding-top: 0.6rem;
+  }
+  .panel-foot time {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-2);
+  }
+  .btn-edit {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-edit:hover { border-color: var(--data); color: var(--text-0); }
+
+  /* ---------- filter bar ---------- */
+  .filterbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+  .filterbar label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+  }
+  select#sector-filter {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    color: var(--text-0);
+    border-radius: 6px;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.85rem;
+  }
+  .chip-group { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .chip {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { color: var(--text-0); border-color: var(--text-2); }
+  .chip.active { background: var(--bg-3); color: var(--text-0); border-color: var(--data); }
+
+  /* ---------- charts ---------- */
+  .charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .chart-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem 0.75rem;
+  }
+  .chart-card h3 {
+    margin: 0 0 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-1);
+  }
+  .chart-card .canvas-wrap { height: 170px; position: relative; }
+
+  /* ---------- section heads ---------- */
+  h2.section-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: var(--text-0);
+    margin: 0 0 1rem;
+  }
+
+  /* ---------- table ---------- */
+  .table-wrap {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td {
+    padding: 0.65rem 0.9rem;
+    text-align: left;
+    font-size: 0.83rem;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  th {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    background: var(--bg-2);
+  }
+  td { color: var(--text-1); font-family: var(--font-mono); }
+  td.emph { color: var(--text-0); }
+  tbody tr:hover { background: var(--bg-2); }
+  .empty-row td {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-2);
+    font-family: var(--font-body);
+  }
+  .badge { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-right: 0.3rem; font-family: var(--font-body); }
+  .badge-green  { background: var(--green-dim); color: var(--green); }
+  .badge-red    { background: var(--red-dim); color: var(--red); }
+  .badge-amber  { background: var(--amber-dim); color: var(--amber); }
+
+  /* ---------- modal ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(8, 10, 7, 0.72);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 50;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 440px;
+    padding: 1.5rem 1.5rem 1.25rem;
+  }
+  .modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1.1rem;
+  }
+  .modal-head h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.3rem;
+    margin: 0;
+  }
+  .modal-head .modal-sector {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-2);
+  }
+  .modal-close {
+    background: none; border: none; color: var(--text-2); font-size: 1.2rem;
+    cursor: pointer; line-height: 1; padding: 0.2rem;
+  }
+  .modal-close:hover { color: var(--text-0); }
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+  }
+  .field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .field label {
+    font-size: 0.72rem;
+    color: var(--text-1);
+    font-family: var(--font-mono);
+  }
+  .field input {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text-0);
+    border-radius: 6px;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+  }
+  .field input:focus { border-color: var(--data); }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 1.4rem;
+  }
+  .btn {
+    border-radius: 6px;
+    padding: 0.55rem 1.1rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    font-weight: 500;
+  }
+  .btn-ghost { background: none; border-color: var(--border); color: var(--text-1); }
+  .btn-ghost:hover { color: var(--text-0); border-color: var(--text-2); }
+  .btn-primary { background: var(--green); color: #0d1a0f; }
+  .btn-primary:hover { background: #74dd8c; }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+
+  /* ---------- toast ---------- */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text-0);
+    padding: 0.7rem 1.1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+
+  @media (max-width: 600px) {
+    h1.title { font-size: 2rem; }
+    .field-grid { grid-template-columns: 1fr; }
+  }
+</style>
 </head>
 <body>
-  <h1>Painel SmartGarden</h1>
-  <p class="subtitle">Leituras em tempo real do Supabase &middot; atualiza automaticamente a cada 10s</p>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <p class="eyebrow">Painel de controle &middot; irrigação automatizada</p>
+        <h1 class="title">SmartGarden</h1>
+      </div>
+      <div class="status-pill">
+        <span class="pulse-dot"></span>
+        <span id="status-text">Conectando…</span>
+      </div>
+    </header>
 
-  <p class="legend">
-    <span><span class="dot dot-green"></span> Verde = aviso de pouca luz</span>
-    <span><span class="dot dot-red"></span> Vermelho = aviso de reservatório baixo</span>
-    <span><span class="dot dot-yellow"></span> Amarelo = solo seco / irrigando</span>
-  </p>
+    <div class="panels" id="panels"></div>
 
-  <div class="cards" id="latest-cards"></div>
+    <div class="filterbar">
+      <label for="sector-filter">Setor</label>
+      <select id="sector-filter"></select>
+      <div class="chip-group" id="alert-filter">
+        <button class="chip active" data-alert="all">Todos</button>
+        <button class="chip" data-alert="low_light">Pouca luz</button>
+        <button class="chip" data-alert="low_reservoir">Reservatório baixo</button>
+        <button class="chip" data-alert="dry">Solo seco</button>
+      </div>
+    </div>
 
-  <table id="readings-table">
-    <thead>
-      <tr>
-        <th>Setor</th>
-        <th>Solo</th>
-        <th>Luminosidade (bruto)</th>
-        <th>Reservatório (L)</th>
-        <th>Alertas</th>
-        <th>Registrado em</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <h2 class="section-title">Tendências</h2>
+    <div class="charts">
+      <div class="chart-card">
+        <h3>Umidade do solo</h3>
+        <div class="canvas-wrap"><canvas id="chart-soil"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Luminosidade (valor bruto)</h3>
+        <div class="canvas-wrap"><canvas id="chart-lumi"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Reservatório (L)</h3>
+        <div class="canvas-wrap"><canvas id="chart-reservoir"></canvas></div>
+      </div>
+    </div>
 
-  <h3>Configuração do dispositivo</h3>
-  <table id="config-table">
-    <thead>
-      <tr>
-        <th>Setor</th>
-        <th>Amanhecer</th>
-        <th>Entardecer</th>
-        <th>Intervalo (s)</th>
-        <th>Limite LDR</th>
-        <th>Reservatório mín. (L)</th>
-        <th>Raio do tanque (cm)</th>
-        <th>Altura do tanque (cm)</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <h2 class="section-title">Histórico</h2>
+    <div class="table-wrap">
+      <table id="readings-table">
+        <thead>
+          <tr>
+            <th>Setor</th>
+            <th>Solo</th>
+            <th>Luz</th>
+            <th>Reservatório</th>
+            <th>Alertas</th>
+            <th>Registrado em</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="config-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2>Configurar dispositivo</h2>
+          <span class="modal-sector" id="modal-sector-label"></span>
+        </div>
+        <button class="modal-close" id="modal-close" aria-label="Fechar">✕</button>
+      </div>
+      <form id="config-form">
+        <div class="field-grid">
+          <div class="field">
+            <label for="f-sunrise">Amanhecer</label>
+            <input type="time" id="f-sunrise" required>
+          </div>
+          <div class="field">
+            <label for="f-sunset">Entardecer</label>
+            <input type="time" id="f-sunset" required>
+          </div>
+          <div class="field">
+            <label for="f-interval">Intervalo entre leituras (s)</label>
+            <input type="number" id="f-interval" min="1" required>
+          </div>
+          <div class="field">
+            <label for="f-ldr">Limite LDR (0&ndash;1023)</label>
+            <input type="number" id="f-ldr" min="0" max="1023" required>
+          </div>
+          <div class="field">
+            <label for="f-reservoir">Reservatório mín. (L)</label>
+            <input type="number" id="f-reservoir" min="0" step="0.1" required>
+          </div>
+          <div class="field">
+            <label for="f-radius">Raio do tanque (cm)</label>
+            <input type="number" id="f-radius" min="0.1" step="0.1" required>
+          </div>
+          <div class="field">
+            <label for="f-height">Altura do tanque (cm)</label>
+            <input type="number" id="f-height" min="0.1" step="0.1" required>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="modal-save">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
 
   <script>
+    const state = { readings: [], configs: [], sector: null, alert: "all" };
+    let soilRowsBySector = [];
+
+    const chartFont = { family: "IBM Plex Mono", size: 10 };
+    Chart.defaults.color = "#93a188";
+    Chart.defaults.font.family = "IBM Plex Mono";
+    Chart.defaults.borderColor = "#283323";
+
+    function gridOpts() {
+      return { color: "#283323", drawTicks: false };
+    }
+
+    const soilChart = new Chart(document.getElementById("chart-soil"), {
+      type: "bar",
+      data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderRadius: 2, barPercentage: 0.9, categoryPercentage: 1 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => (soilRowsBySector[c.dataIndex] && soilRowsBySector[c.dataIndex].soil_moisture) ? "Úmido" : "Seco" } } },
+        scales: {
+          x: { grid: gridOpts(), ticks: { font: chartFont, maxRotation: 0, autoSkip: true } },
+          y: { display: false, min: 0, max: 1.1 },
+        },
+      },
+    });
+
+    const lumiChart = new Chart(document.getElementById("chart-lumi"), {
+      type: "line",
+      data: { labels: [], datasets: [{ data: [], borderColor: "#5fb4c7", backgroundColor: "rgba(95,180,199,0.12)", fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: gridOpts(), ticks: { font: chartFont, maxRotation: 0, autoSkip: true } },
+          y: { grid: gridOpts(), ticks: { font: chartFont }, min: 0, max: 1023 },
+        },
+      },
+    });
+
+    const reservoirChart = new Chart(document.getElementById("chart-reservoir"), {
+      type: "line",
+      data: { labels: [], datasets: [{ data: [], borderColor: "#5fd17a", backgroundColor: "rgba(95,209,122,0.12)", fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: gridOpts(), ticks: { font: chartFont, maxRotation: 0, autoSkip: true } },
+          y: { grid: gridOpts(), ticks: { font: chartFont }, min: 0 },
+        },
+      },
+    });
+
+    function fmtTime(iso) {
+      // recorded_at já vem em horário de Brasília do dispositivo (sem marcador de fuso),
+      // então lemos HH:MM direto da string em vez de reinterpretar via Date/fuso do navegador.
+      const match = /T(\d{2}):(\d{2})/.exec(iso);
+      return match ? `${match[1]}:${match[2]}` : iso;
+    }
+
     function alertBadges(r) {
-      const badges = [];
-      if (r.low_light) badges.push('<span class="badge badge-green">Pouca luz</span>');
-      if (r.low_reservoir) badges.push('<span class="badge badge-red">Reservatório baixo</span>');
-      if (!r.soil_moisture) badges.push('<span class="badge badge-yellow">Solo seco</span>');
-      return badges.join("") || "&mdash;";
+      const out = [];
+      if (r.low_light) out.push('<span class="badge badge-green">Pouca luz</span>');
+      if (r.low_reservoir) out.push('<span class="badge badge-red">Reservatório baixo</span>');
+      if (!r.soil_moisture) out.push('<span class="badge badge-amber">Solo seco</span>');
+      return out.join("") || "&mdash;";
     }
 
-    function renderLatestCards(readings) {
-      const bySector = {};
-      for (const r of readings) {
-        if (!(r.sector in bySector)) bySector[r.sector] = r;
-      }
-      const container = document.getElementById("latest-cards");
-      container.innerHTML = Object.values(bySector).map(r => `
-        <div class="card">
-          <h2>Setor ${r.sector}</h2>
-          <div class="value">Solo ${r.soil_moisture ? "úmido" : "seco"}</div>
-          <div>${r.luminosity} luminosidade (bruto)</div>
-          <div>${r.reservoir_volume_l} L no reservatório</div>
-          <div>${alertBadges(r)}</div>
-        </div>
-      `).join("");
+    function matchesAlert(r, alert) {
+      if (alert === "all") return true;
+      if (alert === "low_light") return !!r.low_light;
+      if (alert === "low_reservoir") return !!r.low_reservoir;
+      if (alert === "dry") return !r.soil_moisture;
+      return true;
     }
 
-    function renderTable(readings) {
+    function sectorsFromData() {
+      const set = new Set();
+      state.readings.forEach((r) => set.add(r.sector));
+      state.configs.forEach((c) => set.add(c.sector));
+      return Array.from(set).sort((a, b) => a - b);
+    }
+
+    function renderSectorOptions() {
+      const sectors = sectorsFromData();
+      if (state.sector === null && sectors.length) state.sector = sectors[0];
+      const select = document.getElementById("sector-filter");
+      select.innerHTML = sectors.map((s) => `<option value="${s}" ${s === state.sector ? "selected" : ""}>Setor ${s}</option>`).join("");
+    }
+
+    function renderPanels() {
+      const sectors = sectorsFromData();
+      const container = document.getElementById("panels");
+      container.innerHTML = sectors.map((s) => {
+        const r = state.readings.find((x) => x.sector === s);
+        if (!r) {
+          return `
+            <div class="panel">
+              <div class="panel-head">
+                <span class="sector-num">${String(s).padStart(2, "0")}</span>
+                <span class="sector-label">Setor</span>
+              </div>
+              <div class="panel-readout">Sem leituras ainda.</div>
+            </div>`;
+        }
+        return `
+          <div class="panel">
+            <div class="panel-head">
+              <span class="sector-num">${String(s).padStart(2, "0")}</span>
+              <div class="leds">
+                <span class="led ${r.low_light ? "on green" : ""}" title="Pouca luz"></span>
+                <span class="led ${!r.soil_moisture ? "on amber" : ""}" title="Solo seco"></span>
+                <span class="led ${r.low_reservoir ? "on red" : ""}" title="Reservatório baixo"></span>
+              </div>
+            </div>
+            <div class="panel-readout">
+              <span>Solo: <b>${r.soil_moisture ? "Úmido" : "Seco"}</b></span>
+              <span>Luz: <b>${r.luminosity == null ? "-" : r.luminosity}</b> (bruto)</span>
+              <span>Reservatório: <b>${r.reservoir_volume_l} L</b></span>
+            </div>
+            <div class="panel-foot">
+              <time>${fmtTime(r.recorded_at)}</time>
+              <button class="btn-edit" data-edit-sector="${s}">Configurar</button>
+            </div>
+          </div>`;
+      }).join("");
+
+      container.querySelectorAll("[data-edit-sector]").forEach((btn) => {
+        btn.addEventListener("click", () => openModal(Number(btn.dataset.editSector)));
+      });
+    }
+
+    function filteredReadings() {
+      return state.readings
+        .filter((r) => r.sector === state.sector)
+        .filter((r) => matchesAlert(r, state.alert));
+    }
+
+    function renderTable() {
+      const rows = filteredReadings();
       const tbody = document.querySelector("#readings-table tbody");
-      tbody.innerHTML = readings.map(r => `
+      if (!rows.length) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Nenhuma leitura encontrada para este filtro.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map((r) => `
         <tr>
-          <td>${r.sector}</td>
+          <td class="emph">${r.sector}</td>
           <td>${r.soil_moisture ? "Úmido" : "Seco"}</td>
-          <td>${r.luminosity}</td>
-          <td>${r.reservoir_volume_l}</td>
+          <td>${r.luminosity == null ? "-" : r.luminosity}</td>
+          <td>${r.reservoir_volume_l} L</td>
           <td>${alertBadges(r)}</td>
-          <td>${r.recorded_at}</td>
+          <td>${fmtTime(r.recorded_at)}</td>
         </tr>
       `).join("");
     }
 
-    function renderConfig(configs) {
-      const tbody = document.querySelector("#config-table tbody");
-      tbody.innerHTML = configs.map(c => `
-        <tr data-sector="${c.sector}">
-          <td>${c.sector}</td>
-          <td><input type="time" class="f-sunrise" value="${c.sunrise_time.slice(0, 5)}"></td>
-          <td><input type="time" class="f-sunset" value="${c.sunset_time.slice(0, 5)}"></td>
-          <td><input type="number" class="f-interval" value="${c.iteration_interval_s}" min="1"></td>
-          <td><input type="number" class="f-ldr" value="${c.ldr_threshold}" min="0" max="1023"></td>
-          <td><input type="number" class="f-reservoir" value="${c.min_reservoir_volume_l}" min="0" step="0.1"></td>
-          <td><input type="number" class="f-radius" value="${c.tank_radius_cm}" min="0.1" step="0.1"></td>
-          <td><input type="number" class="f-height" value="${c.tank_height_cm}" min="0.1" step="0.1"></td>
-          <td>
-            <button class="btn-salvar">Salvar</button>
-            <span class="config-status"></span>
-          </td>
-        </tr>
-      `).join("");
+    function renderCharts() {
+      const rows = filteredReadings().slice().reverse(); // ascending in time
+      const labels = rows.map((r) => fmtTime(r.recorded_at));
+      soilRowsBySector = rows;
+
+      soilChart.data.labels = labels;
+      soilChart.data.datasets[0].data = rows.map(() => 1);
+      soilChart.data.datasets[0].backgroundColor = rows.map((r) => (r.soil_moisture ? "#5fd17a" : "#e3a23d"));
+      soilChart.update();
+
+      lumiChart.data.labels = labels;
+      lumiChart.data.datasets[0].data = rows.map((r) => r.luminosity);
+      lumiChart.update();
+
+      reservoirChart.data.labels = labels;
+      reservoirChart.data.datasets[0].data = rows.map((r) => r.reservoir_volume_l);
+      reservoirChart.update();
+    }
+
+    function renderAll() {
+      renderSectorOptions();
+      renderPanels();
+      renderTable();
+      renderCharts();
     }
 
     async function refreshReadings() {
-      const res = await fetch("/api/readings");
-      const readings = await res.json();
-      renderLatestCards(readings);
-      renderTable(readings);
+      try {
+        const res = await fetch("/api/readings");
+        state.readings = await res.json();
+        document.getElementById("status-text").textContent = "Conectado";
+        renderAll();
+      } catch (err) {
+        document.getElementById("status-text").textContent = "Sem conexão";
+        console.error(err);
+      }
     }
 
-    async function refreshConfig() {
+    async function refreshConfigs() {
       const res = await fetch("/api/config");
-      renderConfig(await res.json());
+      state.configs = await res.json();
+      renderSectorOptions();
+      renderPanels();
     }
 
-    document.getElementById("config-table").addEventListener("click", async (event) => {
-      if (!event.target.classList.contains("btn-salvar")) return;
+    document.getElementById("sector-filter").addEventListener("change", (e) => {
+      state.sector = Number(e.target.value);
+      renderTable();
+      renderCharts();
+    });
 
-      const row = event.target.closest("tr");
-      const sector = row.dataset.sector;
-      const status = row.querySelector(".config-status");
+    document.getElementById("alert-filter").addEventListener("click", (e) => {
+      const btn = e.target.closest(".chip");
+      if (!btn) return;
+      document.querySelectorAll("#alert-filter .chip").forEach((c) => c.classList.remove("active"));
+      btn.classList.add("active");
+      state.alert = btn.dataset.alert;
+      renderTable();
+      renderCharts();
+    });
+
+    // ---------- modal ----------
+    const overlay = document.getElementById("config-modal");
+
+    function openModal(sector) {
+      const cfg = state.configs.find((c) => c.sector === sector);
+      if (!cfg) return;
+      document.getElementById("modal-sector-label").textContent = `Setor ${sector}`;
+      document.getElementById("config-form").dataset.sector = sector;
+      document.getElementById("f-sunrise").value = cfg.sunrise_time.slice(0, 5);
+      document.getElementById("f-sunset").value = cfg.sunset_time.slice(0, 5);
+      document.getElementById("f-interval").value = cfg.iteration_interval_s;
+      document.getElementById("f-ldr").value = cfg.ldr_threshold;
+      document.getElementById("f-reservoir").value = cfg.min_reservoir_volume_l;
+      document.getElementById("f-radius").value = cfg.tank_radius_cm;
+      document.getElementById("f-height").value = cfg.tank_height_cm;
+      overlay.classList.add("open");
+    }
+
+    function closeModal() { overlay.classList.remove("open"); }
+
+    document.getElementById("modal-close").addEventListener("click", closeModal);
+    document.getElementById("modal-cancel").addEventListener("click", closeModal);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+    function showToast(message, isError) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.toggle("error", !!isError);
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+
+    document.getElementById("config-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const sector = document.getElementById("config-form").dataset.sector;
+      const saveBtn = document.getElementById("modal-save");
       const payload = {
-        sunrise_time: row.querySelector(".f-sunrise").value,
-        sunset_time: row.querySelector(".f-sunset").value,
-        iteration_interval_s: Number(row.querySelector(".f-interval").value),
-        ldr_threshold: Number(row.querySelector(".f-ldr").value),
-        min_reservoir_volume_l: Number(row.querySelector(".f-reservoir").value),
-        tank_radius_cm: Number(row.querySelector(".f-radius").value),
-        tank_height_cm: Number(row.querySelector(".f-height").value),
+        sunrise_time: document.getElementById("f-sunrise").value,
+        sunset_time: document.getElementById("f-sunset").value,
+        iteration_interval_s: Number(document.getElementById("f-interval").value),
+        ldr_threshold: Number(document.getElementById("f-ldr").value),
+        min_reservoir_volume_l: Number(document.getElementById("f-reservoir").value),
+        tank_radius_cm: Number(document.getElementById("f-radius").value),
+        tank_height_cm: Number(document.getElementById("f-height").value),
       };
 
-      status.textContent = "Salvando...";
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Salvando…";
       try {
         const res = await fetch(`/api/config/${sector}`, {
           method: "PATCH",
@@ -171,16 +803,20 @@
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error(await res.text());
-        status.textContent = "Salvo!";
+        showToast("Configuração salva.");
+        closeModal();
+        await refreshConfigs();
       } catch (err) {
-        status.textContent = "Erro ao salvar";
+        showToast("Não foi possível salvar. Tente novamente.", true);
         console.error(err);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Salvar";
       }
-      setTimeout(() => { status.textContent = ""; }, 3000);
     });
 
     refreshReadings();
-    refreshConfig();
+    refreshConfigs();
     setInterval(refreshReadings, 10000);
   </script>
 </body>

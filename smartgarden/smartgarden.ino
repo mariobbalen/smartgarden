@@ -12,7 +12,7 @@ const char* TABLE_NAME        = "sensor_data";
 const char* CONFIG_TABLE_NAME = "device_config";
 
 const char* NTP_SERVER   = "pool.ntp.org";
-const long  UTC_OFFSET_S = -3 * 3600;
+const long  UTC_OFFSET_S = 3 * 3600;
 
 const int SECTOR_ID = 1;
 
@@ -64,14 +64,15 @@ void loop() {
   long distance = getDistanceCm();
   float volumeL = getReservoirVolume(distance);
 
-  bool low_light     = isDaytime() && lumi <= ldrThreshold;
+  bool daytime       = isDaytime();
+  bool low_light     = daytime && lumi <= ldrThreshold;
   bool low_reservoir = volumeL <= minReservoirL;
 
   controlActuators(soil_moisture, low_light, low_reservoir);
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("Enviando para o Supabase...");
-    postToSupabase(soil_moisture, lumi, low_light, volumeL, low_reservoir, getTimestamp());
+    postToSupabase(soil_moisture, lumi, daytime, low_light, volumeL, low_reservoir, getTimestamp());
   } else {
     Serial.println("Sem envio: WiFi off");
   }
@@ -234,7 +235,7 @@ long getDistanceCm() {
 }
 
 //faz o post para o supabase
-void postToSupabase(bool soil_moisture, int lumi, bool low_light, float volumeLiters, bool low_reservoir, const String& timestamp) {
+void postToSupabase(bool soil_moisture, int lumi, bool daytime, bool low_light, float volumeLiters, bool low_reservoir, const String& timestamp) {
   std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure());
   client->setInsecure();
 
@@ -250,7 +251,12 @@ void postToSupabase(bool soil_moisture, int lumi, bool low_light, float volumeLi
   StaticJsonDocument<192> doc;
   doc["sector"]             = SECTOR_ID;
   doc["soil_moisture"]      = soil_moisture;
-  doc["luminosity"]         = lumi;
+  //de noite o LDR nao e confiavel, entao envia null em vez do valor bruto
+  if (daytime) {
+    doc["luminosity"] = lumi;
+  } else {
+    doc["luminosity"] = nullptr;
+  }
   doc["low_light"]          = low_light;
   doc["reservoir_volume_l"] = volumeLiters;
   doc["low_reservoir"]      = low_reservoir;

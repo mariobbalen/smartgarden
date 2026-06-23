@@ -2,7 +2,7 @@ create table sensor_data (
   id                  bigserial,
   sector              integer,
   soil_moisture       boolean      not null,
-  luminosity          integer      not null check (luminosity between 0 and 1023),
+  luminosity          integer      check (luminosity between 0 and 1023),
   low_light           boolean      not null,
   reservoir_volume_l  numeric(6,2) not null check (reservoir_volume_l >= 0),
   low_reservoir       boolean      not null,
@@ -39,6 +39,8 @@ alter table device_config enable row level security;
 create policy "Allow anon select"
   on device_config for select to anon
   using (true);
+
+alter table sensor_data alter column luminosity drop not null;
 
 insert into device_config (sector, sunrise_time, sunset_time, iteration_interval_s, ldr_threshold, min_reservoir_volume_l, tank_radius_cm, tank_height_cm)
 values (1, '06:00', '18:00', 15, 40, 5.0, 15.0, 40.0);
