@@ -8,18 +8,22 @@
 #include "secrets.h"
 #include "pins.h"
 
-const char* TABLE_NAME    = "sensor_data";
+const char* TABLE_NAME        = "sensor_data";
+const char* CONFIG_TABLE_NAME = "device_config";
 
 const char* NTP_SERVER   = "pool.ntp.org";
 const long  UTC_OFFSET_S = -3 * 3600;
 
 const int SECTOR_ID = 1;
 
-const int   LDR_THRESHOLD         = 40;
-const float LOW_WATER_THRESHOLD_L = 5.0;
-
-const float TANK_RADIUS_CM = 15.0;
-const float TANK_HEIGHT_CM = 40.0;
+// Valores padrão usados até a primeira leitura de device_config (ou se ela falhar).
+int           ldrThreshold     = 40;
+float         minReservoirL    = 5.0;
+float         tankRadiusCm     = 15.0;
+float         tankHeightCm     = 40.0;
+unsigned long iterationDelayMs = 15000;
+String        sunriseTime      = "";
+String        sunsetTime       = "";
 
 Servo servo;
 
@@ -46,16 +50,22 @@ void setup() {
     Serial.print(".");
   }
   Serial.println(" pronto");
+
+  fetchConfig();
 }
 
 void loop() {
+  if (WiFi.status() == WL_CONNECTED) {
+    fetchConfig();
+  }
+
   bool soil_moisture = getSoilMoisture();
   int lumi      = getLumi();
   long distance = getDistanceCm();
   float volumeL = getReservoirVolume(distance);
 
-  bool low_light     = lumi <= LDR_THRESHOLD;
-  bool low_reservoir = volumeL <= LOW_WATER_THRESHOLD_L;
+  bool low_light     = isDaytime() && lumi <= ldrThreshold;
+  bool low_reservoir = volumeL <= minReservoirL;
 
   controlActuators(soil_moisture, low_light, low_reservoir);
 
@@ -66,7 +76,79 @@ void loop() {
     Serial.println("Sem envio: WiFi off");
   }
 
-  delay(15000);
+  delay(iterationDelayMs);
+}
+
+//busca a configuração do dispositivo no Supabase
+void fetchConfig() {
+  std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure());
+  client->setInsecure();
+
+  HTTPClient http;
+  String url = String(SUPABASE_URL) + "/rest/v1/" + CONFIG_TABLE_NAME +
+               "?select=*&sector=eq." + String(SECTOR_ID);
+  http.begin(*client, url);
+  http.addHeader("apikey",        SUPABASE_KEY);
+  http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
+
+  int statusCode = http.GET();
+  if (statusCode != 200) {
+    Serial.print("Falha ao buscar config, codigo: ");
+    Serial.println(statusCode);
+    http.end();
+    return;
+  }
+
+  String responseBody = http.getString();
+  http.end();
+
+  StaticJsonDocument<768> doc;
+  DeserializationError err = deserializeJson(doc, responseBody);
+
+  if (err || doc.size() == 0) {
+    Serial.print("Config vazia ou invalida, mantendo valores atuais: ");
+    Serial.println(err.c_str());
+    return;
+  }
+
+  JsonObject config   = doc[0];
+  sunriseTime          = config["sunrise_time"].as<String>();
+  sunsetTime            = config["sunset_time"].as<String>();
+  iterationDelayMs     = (unsigned long) config["iteration_interval_s"].as<long>() * 1000UL;
+  ldrThreshold          = config["ldr_threshold"].as<int>();
+  minReservoirL         = config["min_reservoir_volume_l"].as<float>();
+  tankRadiusCm          = config["tank_radius_cm"].as<float>();
+  tankHeightCm          = config["tank_height_cm"].as<float>();
+
+  Serial.println("Config atualizada: ");
+  Serial.print("  amanhecer=");   Serial.print(sunriseTime);
+  Serial.print(" entardecer=");   Serial.print(sunsetTime);
+  Serial.print(" intervalo(s)="); Serial.print(iterationDelayMs / 1000);
+  Serial.print(" ldrThreshold="); Serial.print(ldrThreshold);
+  Serial.print(" minReservoirL="); Serial.print(minReservoirL);
+  Serial.print(" tankRadiusCm=");  Serial.print(tankRadiusCm);
+  Serial.print(" tankHeightCm="); Serial.println(tankHeightCm);
+}
+
+//converte "HH:MM" ou "HH:MM:SS" em minutos desde meia-noite
+int timeStringToMinutes(const String& timeStr) {
+  return timeStr.substring(0, 2).toInt() * 60 + timeStr.substring(3, 5).toInt();
+}
+
+//verifica se o horario atual esta entre o amanhecer e o entardecer
+bool isDaytime() {
+  if (sunriseTime.length() < 5 || sunsetTime.length() < 5) {
+    return true; // sem config valida, assume dia para nao bloquear o aviso de luminosidade
+  }
+
+  time_t now = time(nullptr);
+  struct tm t;
+  localtime_r(&now, &t);
+  int nowMinutes     = t.tm_hour * 60 + t.tm_min;
+  int sunriseMinutes = timeStringToMinutes(sunriseTime);
+  int sunsetMinutes  = timeStringToMinutes(sunsetTime);
+
+  return nowMinutes >= sunriseMinutes && nowMinutes < sunsetMinutes;
 }
 
 //pisca LEDs
@@ -128,8 +210,8 @@ int getLumi() {
 
 //pega o volume de água no reservatório
 float getReservoirVolume(long distanceCm) {
-  float waterHeightCm = constrain(TANK_HEIGHT_CM - distanceCm, 0, TANK_HEIGHT_CM);
-  float volumeCm3 = PI * TANK_RADIUS_CM * TANK_RADIUS_CM * waterHeightCm;
+  float waterHeightCm = constrain(tankHeightCm - distanceCm, 0, tankHeightCm);
+  float volumeCm3 = PI * tankRadiusCm * tankRadiusCm * waterHeightCm;
   float volumeL = volumeCm3 / 1000.0;
   Serial.print("Volume (L) = ");
   Serial.println(volumeL);

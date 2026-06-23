@@ -1,42 +1,89 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>SmartGarden Dashboard</title>
+  <title>Painel SmartGarden</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 2rem; background: #f4f6f5; color: #1d2b1f; }
     h1 { margin-bottom: 0.25rem; }
     .subtitle { color: #5a6b5d; margin-top: 0; }
+    .legend { display: flex; flex-wrap: wrap; gap: 1.25rem; color: #5a6b5d; font-size: 0.85rem; margin: 0.5rem 0 1.5rem; }
+    .legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .dot { width: 0.65rem; height: 0.65rem; border-radius: 50%; display: inline-block; }
+    .dot-green  { background: #2e7d32; }
+    .dot-red    { background: #b3261e; }
+    .dot-yellow { background: #b08900; }
     .cards { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
     .card { background: white; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.15); min-width: 180px; }
     .card h2 { margin: 0 0 0.5rem; font-size: 0.9rem; color: #5a6b5d; text-transform: uppercase; }
     .card .value { font-size: 1.8rem; font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-bottom: 2rem; }
     th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #e3e7e3; font-size: 0.9rem; }
     th { background: #e9efe9; }
-    .low { color: #b3261e; font-weight: 600; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; margin-right: 0.25rem; }
+    .badge-green  { background: #2e7d32; }
+    .badge-red    { background: #b3261e; }
+    .badge-yellow { background: #b08900; }
+    h3 { margin-top: 0; }
+    #config-table input { width: 6rem; padding: 0.2rem 0.4rem; }
+    .btn-salvar { background: #2e7d32; color: white; border: none; border-radius: 4px; padding: 0.35rem 0.75rem; cursor: pointer; font-size: 0.85rem; }
+    .btn-salvar:hover { background: #265f29; }
+    .config-status { font-size: 0.8rem; margin-left: 0.5rem; }
   </style>
 </head>
 <body>
-  <h1>SmartGarden Dashboard</h1>
-  <p class="subtitle">Live readings from Supabase &middot; auto-refreshes every 10s</p>
+  <h1>Painel SmartGarden</h1>
+  <p class="subtitle">Leituras em tempo real do Supabase &middot; atualiza automaticamente a cada 10s</p>
+
+  <p class="legend">
+    <span><span class="dot dot-green"></span> Verde = aviso de pouca luz</span>
+    <span><span class="dot dot-red"></span> Vermelho = aviso de reservatório baixo</span>
+    <span><span class="dot dot-yellow"></span> Amarelo = solo seco / irrigando</span>
+  </p>
 
   <div class="cards" id="latest-cards"></div>
 
   <table id="readings-table">
     <thead>
       <tr>
-        <th>Sector</th>
-        <th>Soil moisture (%)</th>
-        <th>Luminosity (%)</th>
-        <th>Reservoir (L)</th>
-        <th>Recorded at</th>
+        <th>Setor</th>
+        <th>Solo</th>
+        <th>Luminosidade (bruto)</th>
+        <th>Reservatório (L)</th>
+        <th>Alertas</th>
+        <th>Registrado em</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h3>Configuração do dispositivo</h3>
+  <table id="config-table">
+    <thead>
+      <tr>
+        <th>Setor</th>
+        <th>Amanhecer</th>
+        <th>Entardecer</th>
+        <th>Intervalo (s)</th>
+        <th>Limite LDR</th>
+        <th>Reservatório mín. (L)</th>
+        <th>Raio do tanque (cm)</th>
+        <th>Altura do tanque (cm)</th>
+        <th>Ações</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 
   <script>
+    function alertBadges(r) {
+      const badges = [];
+      if (r.low_light) badges.push('<span class="badge badge-green">Pouca luz</span>');
+      if (r.low_reservoir) badges.push('<span class="badge badge-red">Reservatório baixo</span>');
+      if (!r.soil_moisture) badges.push('<span class="badge badge-yellow">Solo seco</span>');
+      return badges.join("") || "&mdash;";
+    }
+
     function renderLatestCards(readings) {
       const bySector = {};
       for (const r of readings) {
@@ -45,10 +92,11 @@
       const container = document.getElementById("latest-cards");
       container.innerHTML = Object.values(bySector).map(r => `
         <div class="card">
-          <h2>Sector ${r.sector}</h2>
-          <div class="value">${r.soil_moisture}% soil</div>
-          <div>${r.luminosity}% light</div>
-          <div class="${r.reservoir_volume_l <= 5 ? "low" : ""}">${r.reservoir_volume_l} L reservoir</div>
+          <h2>Setor ${r.sector}</h2>
+          <div class="value">Solo ${r.soil_moisture ? "úmido" : "seco"}</div>
+          <div>${r.luminosity} luminosidade (bruto)</div>
+          <div>${r.reservoir_volume_l} L no reservatório</div>
+          <div>${alertBadges(r)}</div>
         </div>
       `).join("");
     }
@@ -58,23 +106,82 @@
       tbody.innerHTML = readings.map(r => `
         <tr>
           <td>${r.sector}</td>
-          <td>${r.soil_moisture}</td>
+          <td>${r.soil_moisture ? "Úmido" : "Seco"}</td>
           <td>${r.luminosity}</td>
-          <td class="${r.reservoir_volume_l <= 5 ? "low" : ""}">${r.reservoir_volume_l}</td>
+          <td>${r.reservoir_volume_l}</td>
+          <td>${alertBadges(r)}</td>
           <td>${r.recorded_at}</td>
         </tr>
       `).join("");
     }
 
-    async function refresh() {
+    function renderConfig(configs) {
+      const tbody = document.querySelector("#config-table tbody");
+      tbody.innerHTML = configs.map(c => `
+        <tr data-sector="${c.sector}">
+          <td>${c.sector}</td>
+          <td><input type="time" class="f-sunrise" value="${c.sunrise_time.slice(0, 5)}"></td>
+          <td><input type="time" class="f-sunset" value="${c.sunset_time.slice(0, 5)}"></td>
+          <td><input type="number" class="f-interval" value="${c.iteration_interval_s}" min="1"></td>
+          <td><input type="number" class="f-ldr" value="${c.ldr_threshold}" min="0" max="1023"></td>
+          <td><input type="number" class="f-reservoir" value="${c.min_reservoir_volume_l}" min="0" step="0.1"></td>
+          <td><input type="number" class="f-radius" value="${c.tank_radius_cm}" min="0.1" step="0.1"></td>
+          <td><input type="number" class="f-height" value="${c.tank_height_cm}" min="0.1" step="0.1"></td>
+          <td>
+            <button class="btn-salvar">Salvar</button>
+            <span class="config-status"></span>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    async function refreshReadings() {
       const res = await fetch("/api/readings");
       const readings = await res.json();
       renderLatestCards(readings);
       renderTable(readings);
     }
 
-    refresh();
-    setInterval(refresh, 10000);
+    async function refreshConfig() {
+      const res = await fetch("/api/config");
+      renderConfig(await res.json());
+    }
+
+    document.getElementById("config-table").addEventListener("click", async (event) => {
+      if (!event.target.classList.contains("btn-salvar")) return;
+
+      const row = event.target.closest("tr");
+      const sector = row.dataset.sector;
+      const status = row.querySelector(".config-status");
+      const payload = {
+        sunrise_time: row.querySelector(".f-sunrise").value,
+        sunset_time: row.querySelector(".f-sunset").value,
+        iteration_interval_s: Number(row.querySelector(".f-interval").value),
+        ldr_threshold: Number(row.querySelector(".f-ldr").value),
+        min_reservoir_volume_l: Number(row.querySelector(".f-reservoir").value),
+        tank_radius_cm: Number(row.querySelector(".f-radius").value),
+        tank_height_cm: Number(row.querySelector(".f-height").value),
+      };
+
+      status.textContent = "Salvando...";
+      try {
+        const res = await fetch(`/api/config/${sector}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        status.textContent = "Salvo!";
+      } catch (err) {
+        status.textContent = "Erro ao salvar";
+        console.error(err);
+      }
+      setTimeout(() => { status.textContent = ""; }, 3000);
+    });
+
+    refreshReadings();
+    refreshConfig();
+    setInterval(refreshReadings, 10000);
   </script>
 </body>
 </html>
