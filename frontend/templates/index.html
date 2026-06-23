@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SmartGarden Dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #f4f6f5; color: #1d2b1f; }
+    h1 { margin-bottom: 0.25rem; }
+    .subtitle { color: #5a6b5d; margin-top: 0; }
+    .cards { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+    .card { background: white; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.15); min-width: 180px; }
+    .card h2 { margin: 0 0 0.5rem; font-size: 0.9rem; color: #5a6b5d; text-transform: uppercase; }
+    .card .value { font-size: 1.8rem; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+    th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #e3e7e3; font-size: 0.9rem; }
+    th { background: #e9efe9; }
+    .low { color: #b3261e; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>SmartGarden Dashboard</h1>
+  <p class="subtitle">Live readings from Supabase &middot; auto-refreshes every 10s</p>
+
+  <div class="cards" id="latest-cards"></div>
+
+  <table id="readings-table">
+    <thead>
+      <tr>
+        <th>Sector</th>
+        <th>Soil moisture (%)</th>
+        <th>Luminosity (%)</th>
+        <th>Reservoir (L)</th>
+        <th>Recorded at</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    function renderLatestCards(readings) {
+      const bySector = {};
+      for (const r of readings) {
+        if (!(r.sector in bySector)) bySector[r.sector] = r;
+      }
+      const container = document.getElementById("latest-cards");
+      container.innerHTML = Object.values(bySector).map(r => `
+        <div class="card">
+          <h2>Sector ${r.sector}</h2>
+          <div class="value">${r.soil_moisture}% soil</div>
+          <div>${r.luminosity}% light</div>
+          <div class="${r.reservoir_volume_l <= 5 ? "low" : ""}">${r.reservoir_volume_l} L reservoir</div>
+        </div>
+      `).join("");
+    }
+
+    function renderTable(readings) {
+      const tbody = document.querySelector("#readings-table tbody");
+      tbody.innerHTML = readings.map(r => `
+        <tr>
+          <td>${r.sector}</td>
+          <td>${r.soil_moisture}</td>
+          <td>${r.luminosity}</td>
+          <td class="${r.reservoir_volume_l <= 5 ? "low" : ""}">${r.reservoir_volume_l}</td>
+          <td>${r.recorded_at}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function refresh() {
+      const res = await fetch("/api/readings");
+      const readings = await res.json();
+      renderLatestCards(readings);
+      renderTable(readings);
+    }
+
+    refresh();
+    setInterval(refresh, 10000);
+  </script>
+</body>
+</html>
