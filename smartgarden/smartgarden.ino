@@ -50,15 +50,18 @@ void setup() {
 
 void loop() {
   bool soil_moisture = getSoilMoisture();
-  int lumi   = getLumi();
+  int lumi      = getLumi();
   long distance = getDistanceCm();
   float volumeL = getReservoirVolume(distance);
 
-  controlActuators(soil_moisture, lumi, volumeL);
-  
+  bool low_light     = lumi <= LDR_THRESHOLD;
+  bool low_reservoir = volumeL <= LOW_WATER_THRESHOLD_L;
+
+  controlActuators(soil_moisture, low_light, low_reservoir);
+
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("Enviando para o Supabase...");
-    postToSupabase(soil_moisture, lumi, volumeL, getTimestamp());
+    postToSupabase(soil_moisture, lumi, low_light, volumeL, low_reservoir, getTimestamp());
   } else {
     Serial.println("Sem envio: WiFi off");
   }
@@ -79,11 +82,11 @@ void blinkLed(int pin) {
 }
 
 //controla os atuadores (LEDs e Servo)
-void controlActuators(int soil_moisture, int ldr, float volumeL) {
-  if (ldr <= LDR_THRESHOLD) 
+void controlActuators(bool soil_moisture, bool low_light, bool low_reservoir) {
+  if (low_light)
     blinkLed(GREEN_LED);
-    
-  if (volumeL <= LOW_WATER_THRESHOLD_L) 
+
+  if (low_reservoir)
     blinkLed(RED_LED);
 
   //se estiver umido, n faz nada
@@ -149,7 +152,7 @@ long getDistanceCm() {
 }
 
 //faz o post para o supabase
-void postToSupabase(int soil_moisture, int lumi, float volumeLiters, const String& timestamp) {
+void postToSupabase(bool soil_moisture, int lumi, bool low_light, float volumeLiters, bool low_reservoir, const String& timestamp) {
   std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure());
   client->setInsecure();
 
@@ -162,11 +165,13 @@ void postToSupabase(int soil_moisture, int lumi, float volumeLiters, const Strin
   http.addHeader("Prefer",        "return=minimal");
 
   //cria o json que vai enviar para alimentar a tabela
-  StaticJsonDocument<160> doc;
+  StaticJsonDocument<192> doc;
   doc["sector"]             = SECTOR_ID;
   doc["soil_moisture"]      = soil_moisture;
   doc["luminosity"]         = lumi;
+  doc["low_light"]          = low_light;
   doc["reservoir_volume_l"] = volumeLiters;
+  doc["low_reservoir"]      = low_reservoir;
   doc["recorded_at"]        = timestamp;
 
   String body;
